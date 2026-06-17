@@ -1,5 +1,7 @@
 package org.example.skillforgeapi.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.example.skillforgeapi.model.dto.response.AssetSummaryResponse;
 import org.example.skillforgeapi.model.dto.response.ScenarioSummaryResponse;
 import org.example.skillforgeapi.service.ScenarioService;
@@ -13,6 +15,7 @@ import java.util.UUID;
 
 @RestController
 @RequiredArgsConstructor
+@Tag(name = "Scénarios ↔ Assets", description = "Association entre scénarios et assets")
 public class ScenarioAssetController {
 
     private final ScenarioService scenarioService;
@@ -23,6 +26,7 @@ public class ScenarioAssetController {
      */
     @PostMapping("/scenarios/{scenarioId}/assets/{assetId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'TRAINER')")
+    @Operation(summary = "Attacher un asset à un scénario", description = "Associe un asset existant à un scénario. Accès : ADMIN, TRAINER.")
     public ResponseEntity<Void> attachAssetToScenario(
             @PathVariable UUID scenarioId,
             @PathVariable UUID assetId) {
@@ -36,6 +40,7 @@ public class ScenarioAssetController {
      */
     @DeleteMapping("/scenarios/{scenarioId}/assets/{assetId}")
     @PreAuthorize("hasAnyRole('ADMIN', 'TRAINER')")
+    @Operation(summary = "Détacher un asset d'un scénario", description = "Retire l'association entre un asset et un scénario. Accès : ADMIN, TRAINER.")
     public ResponseEntity<Void> detachAssetFromScenario(
             @PathVariable UUID scenarioId,
             @PathVariable UUID assetId) {
@@ -49,6 +54,7 @@ public class ScenarioAssetController {
      */
     @GetMapping("/scenarios/{scenarioId}/assets")
     @PreAuthorize("hasAnyRole('TRAINEE', 'TRAINER', 'ADMIN')")
+    @Operation(summary = "Lister les assets d'un scénario", description = "Liste les assets ACTIVE d'un scénario. Accès : TRAINEE, TRAINER, ADMIN.")
     public ResponseEntity<List<AssetSummaryResponse>> getAssetsByScenario(
             @PathVariable UUID scenarioId) {
         List<AssetSummaryResponse> assets = scenarioService.getAssetsByScenario(scenarioId);
@@ -61,6 +67,7 @@ public class ScenarioAssetController {
      */
     @GetMapping("/assets/{assetId}/scenarios")
     @PreAuthorize("hasAnyRole('ADMIN', 'TRAINER')")
+    @Operation(summary = "Lister les scénarios utilisant un asset", description = "Liste les scénarios qui référencent un asset donné. Accès : ADMIN, TRAINER.")
     public ResponseEntity<List<ScenarioSummaryResponse>> getScenariosByAsset(
             @PathVariable UUID assetId) {
         List<ScenarioSummaryResponse> scenarios = scenarioService.getScenariosByAsset(assetId);

@@ -1,0 +1,779 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "SkillForge API",
+    "version": "0.0.1",
+    "description": "API REST de la plateforme SkillForge : gestion des modules de formation, scenarios, et assets (upload via SFTP).\n\n**Authentification** : la plupart des endpoints requierent un JWT (header `Authorization: Bearer <token>`). Cliquez sur le bouton « Authorize » dans Swagger UI et collez le token (sans le prefixe « Bearer »).\n\n**Note** : les controllers sont mappes a la racine (ex. `/modules`), il n'y a pas de context-path `/api`. Le webhook SFTP est authentifie par le header `X-Webhook-Secret`, pas par JWT.",
+    "contact": {
+      "name": "Equipe SkillForge",
+      "email": "ngapepouekarl@gmail.com"
+    },
+    "license": {
+      "name": "Proprietaire"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8081",
+      "description": "Environnement local"
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "tags": [
+    { "name": "Modules", "description": "Gestion des modules de formation" },
+    { "name": "Scenarios", "description": "Gestion des scenarios rattaches aux modules" },
+    { "name": "Scenarios <-> Assets", "description": "Association entre scenarios et assets" },
+    { "name": "Assets", "description": "Upload (via SFTP) et telechargement des ressources pedagogiques" },
+    { "name": "Webhooks SFTP", "description": "Callbacks appeles par SFTPGo (authentifies par secret, pas par JWT)" }
+  ],
+  "paths": {
+    "/modules": {
+      "get": {
+        "tags": ["Modules"],
+        "summary": "Lister les modules",
+        "description": "Liste tous les modules tries par ordre. Acces : TRAINEE, TRAINER, ADMIN.",
+        "operationId": "getAllModules",
+        "responses": {
+          "200": {
+            "description": "Liste des modules",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/ModuleResponse" }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      },
+      "post": {
+        "tags": ["Modules"],
+        "summary": "Creer un module",
+        "description": "Cree un nouveau module. Acces : ADMIN, TRAINER.",
+        "operationId": "createModule",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ModuleRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Module cree",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ModuleResponse" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/modules/{id}": {
+      "get": {
+        "tags": ["Modules"],
+        "summary": "Details d'un module",
+        "description": "Retourne un module et ses niveaux. Acces : TRAINEE, TRAINER, ADMIN.",
+        "operationId": "getModuleById",
+        "parameters": [ { "$ref": "#/components/parameters/PathId" } ],
+        "responses": {
+          "200": {
+            "description": "Module trouve",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ModuleResponse" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "put": {
+        "tags": ["Modules"],
+        "summary": "Mettre a jour un module",
+        "description": "Met a jour un module existant. Acces : ADMIN, TRAINER.",
+        "operationId": "updateModule",
+        "parameters": [ { "$ref": "#/components/parameters/PathId" } ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ModuleRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Module mis a jour",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ModuleResponse" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "delete": {
+        "tags": ["Modules"],
+        "summary": "Supprimer un module",
+        "description": "Supprime un module et ses niveaux (cascade). Acces : ADMIN.",
+        "operationId": "deleteModule",
+        "parameters": [ { "$ref": "#/components/parameters/PathId" } ],
+        "responses": {
+          "204": { "description": "Module supprime" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/modules/reorder": {
+      "patch": {
+        "tags": ["Modules"],
+        "summary": "Reordonner les modules",
+        "description": "Reorganise l'ordre d'affichage des modules. Acces : ADMIN, TRAINER.",
+        "operationId": "reorderModules",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ModuleReorderRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Modules reordonnes" },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/modules/{moduleId}/scenarios": {
+      "get": {
+        "tags": ["Scenarios"],
+        "summary": "Lister les scenarios d'un module",
+        "description": "Liste tous les scenarios d'un module (tries). Acces : TRAINEE, TRAINER, ADMIN.",
+        "operationId": "getScenariosByModule",
+        "parameters": [ { "$ref": "#/components/parameters/PathModuleId" } ],
+        "responses": {
+          "200": {
+            "description": "Liste des scenarios",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/ScenarioResponse" }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "post": {
+        "tags": ["Scenarios"],
+        "summary": "Creer un scenario",
+        "description": "Cree un nouveau scenario dans le module. Acces : ADMIN, TRAINER.",
+        "operationId": "createScenario",
+        "parameters": [ { "$ref": "#/components/parameters/PathModuleId" } ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ScenarioRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Scenario cree",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ScenarioResponse" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/modules/{moduleId}/scenarios/active": {
+      "get": {
+        "tags": ["Scenarios"],
+        "summary": "Lister les scenarios actifs d'un module",
+        "description": "Liste uniquement les scenarios actifs (pour les stagiaires). Acces : TRAINEE, TRAINER, ADMIN.",
+        "operationId": "getActiveScenariosByModule",
+        "parameters": [ { "$ref": "#/components/parameters/PathModuleId" } ],
+        "responses": {
+          "200": {
+            "description": "Liste des scenarios actifs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/ScenarioResponse" }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/modules/{moduleId}/scenarios/reorder": {
+      "patch": {
+        "tags": ["Scenarios"],
+        "summary": "Reordonner les scenarios",
+        "description": "Reorganise l'ordre des scenarios d'un module. Acces : ADMIN, TRAINER.",
+        "operationId": "reorderScenarios",
+        "parameters": [ { "$ref": "#/components/parameters/PathModuleId" } ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ScenarioReorderRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Scenarios reordonnes" },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/scenarios/{id}": {
+      "get": {
+        "tags": ["Scenarios"],
+        "summary": "Details d'un scenario",
+        "description": "Retourne un scenario avec ses assets. Acces : TRAINEE, TRAINER, ADMIN.",
+        "operationId": "getScenarioById",
+        "parameters": [ { "$ref": "#/components/parameters/PathId" } ],
+        "responses": {
+          "200": {
+            "description": "Scenario trouve",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ScenarioResponse" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "put": {
+        "tags": ["Scenarios"],
+        "summary": "Mettre a jour un scenario",
+        "description": "Met a jour un scenario. Acces : ADMIN, TRAINER.",
+        "operationId": "updateScenario",
+        "parameters": [ { "$ref": "#/components/parameters/PathId" } ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ScenarioRequest" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Scenario mis a jour",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ScenarioResponse" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "delete": {
+        "tags": ["Scenarios"],
+        "summary": "Supprimer un scenario",
+        "description": "Supprime un scenario. Acces : ADMIN.",
+        "operationId": "deleteScenario",
+        "parameters": [ { "$ref": "#/components/parameters/PathId" } ],
+        "responses": {
+          "204": { "description": "Scenario supprime" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/scenarios/{id}/toggle": {
+      "patch": {
+        "tags": ["Scenarios"],
+        "summary": "Activer / desactiver un scenario",
+        "description": "Bascule l'etat actif d'un scenario. Acces : ADMIN, TRAINER.",
+        "operationId": "toggleScenarioActive",
+        "parameters": [ { "$ref": "#/components/parameters/PathId" } ],
+        "responses": {
+          "200": {
+            "description": "Etat bascule",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ScenarioResponse" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/scenarios/{scenarioId}/assets": {
+      "get": {
+        "tags": ["Scenarios <-> Assets"],
+        "summary": "Lister les assets d'un scenario",
+        "description": "Liste les assets ACTIVE d'un scenario. Acces : TRAINEE, TRAINER, ADMIN.",
+        "operationId": "getAssetsByScenario",
+        "parameters": [ { "$ref": "#/components/parameters/PathScenarioId" } ],
+        "responses": {
+          "200": {
+            "description": "Liste des assets",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/AssetSummaryResponse" }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/scenarios/{scenarioId}/assets/{assetId}": {
+      "post": {
+        "tags": ["Scenarios <-> Assets"],
+        "summary": "Attacher un asset a un scenario",
+        "description": "Associe un asset existant a un scenario. Acces : ADMIN, TRAINER.",
+        "operationId": "attachAssetToScenario",
+        "parameters": [
+          { "$ref": "#/components/parameters/PathScenarioId" },
+          { "$ref": "#/components/parameters/PathAssetId" }
+        ],
+        "responses": {
+          "200": { "description": "Asset attache" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      },
+      "delete": {
+        "tags": ["Scenarios <-> Assets"],
+        "summary": "Detacher un asset d'un scenario",
+        "description": "Retire l'association entre un asset et un scenario. Acces : ADMIN, TRAINER.",
+        "operationId": "detachAssetFromScenario",
+        "parameters": [
+          { "$ref": "#/components/parameters/PathScenarioId" },
+          { "$ref": "#/components/parameters/PathAssetId" }
+        ],
+        "responses": {
+          "204": { "description": "Asset detache" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/assets/{assetId}/scenarios": {
+      "get": {
+        "tags": ["Scenarios <-> Assets"],
+        "summary": "Lister les scenarios utilisant un asset",
+        "description": "Liste les scenarios qui referencent un asset donne. Acces : ADMIN, TRAINER.",
+        "operationId": "getScenariosByAsset",
+        "parameters": [ { "$ref": "#/components/parameters/PathAssetId" } ],
+        "responses": {
+          "200": {
+            "description": "Liste des scenarios",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/ScenarioSummaryResponse" }
+                }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/assets/init": {
+      "post": {
+        "tags": ["Assets"],
+        "summary": "Initialiser un upload d'asset",
+        "description": "Etape 1 : cree l'asset et retourne les informations d'upload SFTP. Acces : ADMIN, TRAINER.",
+        "operationId": "initAsset",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AssetInitRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Asset initialise",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AssetInitResponse" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/ValidationError" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" }
+        }
+      }
+    },
+    "/assets/{id}/status": {
+      "get": {
+        "tags": ["Assets"],
+        "summary": "Statut d'un asset",
+        "description": "Retourne le statut d'un asset (utile pour le polling apres upload). Acces : ADMIN, TRAINER.",
+        "operationId": "getStatus",
+        "parameters": [ { "$ref": "#/components/parameters/PathId" } ],
+        "responses": {
+          "200": {
+            "description": "Statut de l'asset",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AssetStatus" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/assets/{id}/download": {
+      "get": {
+        "tags": ["Assets"],
+        "summary": "Telecharger un asset",
+        "description": "Stream le fichier de l'asset (uniquement si ACTIVE). Acces : TRAINEE, ADMIN, TRAINER.",
+        "operationId": "downloadAsset",
+        "parameters": [ { "$ref": "#/components/parameters/PathId" } ],
+        "responses": {
+          "200": {
+            "description": "Flux binaire du fichier",
+            "content": {
+              "application/octet-stream": {
+                "schema": { "type": "string", "format": "binary" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "description": "Asset introuvable ou non actif" },
+          "500": { "description": "Echec du telechargement" }
+        }
+      }
+    },
+    "/webhooks/sftp/upload": {
+      "post": {
+        "tags": ["Webhooks SFTP"],
+        "summary": "Webhook upload SFTP",
+        "description": "Recu de SFTPGo a la fin d'un upload pour finaliser l'asset. Protege par le header X-Webhook-Secret (pas de JWT).",
+        "operationId": "handleUpload",
+        "security": [],
+        "parameters": [
+          {
+            "name": "X-Webhook-Secret",
+            "in": "header",
+            "required": false,
+            "description": "Secret partage validant l'origine du webhook",
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/SftpGoWebhookPayload" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Webhook traite (ou ignore)" },
+          "401": { "description": "Secret invalide" },
+          "500": { "description": "Erreur lors du traitement" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Authentification JWT. Saisissez uniquement le token (sans « Bearer »)."
+      }
+    },
+    "parameters": {
+      "PathId": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string", "format": "uuid" }
+      },
+      "PathModuleId": {
+        "name": "moduleId",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string", "format": "uuid" }
+      },
+      "PathScenarioId": {
+        "name": "scenarioId",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string", "format": "uuid" }
+      },
+      "PathAssetId": {
+        "name": "assetId",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string", "format": "uuid" }
+      }
+    },
+    "responses": {
+      "Unauthorized": {
+        "description": "Non authentifie (JWT manquant ou invalide)",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "Acces refuse (role insuffisant)",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "Ressource introuvable",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+          }
+        }
+      },
+      "ValidationError": {
+        "description": "Donnees invalides",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "ModuleRequest": {
+        "type": "object",
+        "required": ["title"],
+        "properties": {
+          "title": { "type": "string", "description": "Titre du module (obligatoire)" },
+          "description": { "type": "string", "nullable": true }
+        }
+      },
+      "ModuleReorderRequest": {
+        "type": "object",
+        "required": ["moduleIds"],
+        "properties": {
+          "moduleIds": {
+            "type": "array",
+            "description": "IDs des modules dans le nouvel ordre (non vide)",
+            "minItems": 1,
+            "items": { "type": "string", "format": "uuid" }
+          }
+        }
+      },
+      "ScenarioRequest": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string", "description": "Nom du scenario (obligatoire)" },
+          "description": { "type": "string", "nullable": true },
+          "thumbnailUrl": { "type": "string", "nullable": true }
+        }
+      },
+      "ScenarioReorderRequest": {
+        "type": "object",
+        "required": ["scenarioIds"],
+        "properties": {
+          "scenarioIds": {
+            "type": "array",
+            "description": "IDs des scenarios dans le nouvel ordre (non vide)",
+            "minItems": 1,
+            "items": { "type": "string", "format": "uuid" }
+          }
+        }
+      },
+      "AssetInitRequest": {
+        "type": "object",
+        "required": ["name", "type"],
+        "properties": {
+          "name": { "type": "string" },
+          "type": { "$ref": "#/components/schemas/AssetType" },
+          "scenariosId": {
+            "type": "array",
+            "description": "Optionnel : pre-associer a des scenarios",
+            "nullable": true,
+            "items": { "type": "string", "format": "uuid" }
+          }
+        }
+      },
+      "SftpGoWebhookPayload": {
+        "type": "object",
+        "properties": {
+          "event": { "type": "string" },
+          "username": { "type": "string" },
+          "action": { "type": "string" },
+          "path": { "type": "string" },
+          "size": { "type": "integer", "format": "int64" },
+          "fileModified": { "type": "integer", "format": "int64" },
+          "checksum": {
+            "type": "object",
+            "additionalProperties": { "type": "string" }
+          },
+          "provider": { "type": "string" }
+        }
+      },
+      "ModuleResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "title": { "type": "string" },
+          "description": { "type": "string", "nullable": true },
+          "orderIndex": { "type": "integer", "format": "int32" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" },
+          "scenarioCount": { "type": "integer", "format": "int32", "description": "Nombre de scenarios associes" },
+          "scenarios": {
+            "type": "array",
+            "nullable": true,
+            "items": { "$ref": "#/components/schemas/ScenarioSummaryResponse" }
+          }
+        }
+      },
+      "ScenarioResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "description": { "type": "string", "nullable": true },
+          "siteConcerning": { "type": "string", "nullable": true },
+          "thumbnailUrl": { "type": "string", "nullable": true },
+          "active": { "type": "boolean" },
+          "orderIndex": { "type": "integer", "format": "int32" },
+          "moduleId": { "type": "string", "format": "uuid" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" },
+          "assets": {
+            "type": "array",
+            "nullable": true,
+            "items": { "$ref": "#/components/schemas/AssetSummaryResponse" }
+          }
+        }
+      },
+      "ScenarioSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "moduleId": { "type": "string", "format": "uuid" },
+          "active": { "type": "boolean" }
+        }
+      },
+      "AssetInitResponse": {
+        "type": "object",
+        "properties": {
+          "assetId": { "type": "string", "format": "uuid" },
+          "token": { "type": "string" },
+          "sftpPath": { "type": "string" },
+          "sftpUploadUrl": { "type": "string" }
+        }
+      },
+      "AssetSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "type": { "type": "string" },
+          "fileUrl": { "type": "string", "nullable": true }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "timestamp": { "type": "string", "format": "date-time" },
+          "status": { "type": "integer", "format": "int32" },
+          "error": { "type": "string" },
+          "message": { "type": "string" },
+          "details": {
+            "type": "object",
+            "nullable": true,
+            "additionalProperties": { "type": "string" },
+            "description": "Erreurs de validation par champ"
+          }
+        }
+      },
+      "AssetType": {
+        "type": "string",
+        "enum": ["MAP", "MODEL", "TEXTURE", "AUDIO", "DATA"]
+      },
+      "AssetStatus": {
+        "type": "string",
+        "enum": ["PENDING", "ACTIVE", "DELETED"]
+      }
+    }
+  }
+}
