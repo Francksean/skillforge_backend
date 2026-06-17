@@ -1,4 +1,5 @@
 package org.example.skillforgeapi.service;
+
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -14,6 +15,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
@@ -29,8 +33,11 @@ public class AssetService {
     @Value("${app.sftp.base-url}")
     private String sftpBaseUrl; // ex: sftp://sftpgo:2022
 
-    @Value("${app.sftp.root-virtual-path}")
-    private String rootVirtualPath; // ex: /uploads
+    @Value("${app.sftp.local-base-path}")
+    private String localBasePath;
+
+    @Value("${app.sftp.base-virtual-path}")
+    private String baseVirtualPath; // par défaut "/"
 
     @Value("${app.base-url}")
     private String appBaseUrl;
@@ -40,29 +47,55 @@ public class AssetService {
      */
     @Transactional
     public AssetInitResponse initializeAsset(AssetInitRequest request) {
-        // Générer un token unique pour le dossier
+        // Générer un token unique
         String token = UUID.randomUUID().toString().replace("-", "");
-        String sftpPath = String.format("%s/%s/", rootVirtualPath, request.getType(), token);
 
-        // Créer l'asset
+        // Construire le chemin virtuel relatif (par rapport à la racine du compte SFTP)
+        // Exemple : /MODEL/a1b2c3d4/
+        String virtualPath = baseVirtualPath + "/" + request.getType().name() + "/" + token + "/";
+        // Nettoyer les doubles slashes éventuels
+        virtualPath = virtualPath.replaceAll("/+", "/");
+
+        // Construire le chemin physique absolu
+        Path physicalPath = Paths.get(localBasePath, request.getType().name(), token);
+
+        try {
+            // Créer le dossier (et ses parents) s'il n'existe pas
+            Files.createDirectories(physicalPath);
+            log.info("Dossier physique créé : {}", physicalPath.toAbsolutePath());
+        } catch (Exception e) {
+            log.error("Impossible de créer le dossier physique pour l'asset", e);
+            throw new RuntimeException("Erreur lors de la création du répertoire de stockage", e);
+        }
+
+        // Créer l'entité Asset en base
         Asset asset = new Asset();
         asset.setName(request.getName());
         asset.setType(request.getType());
-        asset.setSftpPath(sftpPath); // chemin partiel sans nom de fichier
+        asset.setSftpPath(virtualPath); // stocke le chemin virtuel (sans nom de fichier)
         asset.setStatus(AssetStatus.PENDING);
         asset = assetRepository.save(asset);
 
-        // Pré-associer aux niveaux si demandé
+        // Pré-associer aux scénarios si demandé
         if (request.getScenariosId() != null && !request.getScenariosId().isEmpty()) {
             List<Scenario> scenarios = scenarioRepository.findAllById(request.getScenariosId());
             asset.setScenarios(new HashSet<>(scenarios));
             asset = assetRepository.save(asset);
         }
 
-        // Construire la réponse
-        String fullSftpUrl = sftpBaseUrl + sftpPath;
-        return new AssetInitResponse(asset.getId(), token, sftpPath, fullSftpUrl);
+        // Construire la réponse : le chemin virtuel relatif (pour que le client FTP s'y place)
+        // On envoie le chemin sans le premier '/' pour certains clients, mais on peut l'envoyer avec.
+        // Nous envoyons le chemin complet virtuel (commençant par /) pour être explicite.
+        String fullSftpUrl = sftpBaseUrl + virtualPath;
+
+        return new AssetInitResponse(
+                asset.getId(),
+                token,
+                virtualPath,      // chemin relatif virtuel (ex: /MODEL/a1b2c3/)
+                fullSftpUrl       // URL complète sftp://... (optionnel)
+        );
     }
+
 
     /**
      * Étape 2 : Finalisation par webhook SFTPGo
@@ -91,7 +124,7 @@ public class AssetService {
         asset.setSftpPath(payload.getPath());
 
         // URL publique (pour téléchargement HTTP)
-        asset.setFileUrl(appBaseUrl + "/api/assets/" + asset.getId() + "/download");
+        asset.setFileUrl(appBaseUrl + "/assets/" + asset.getId() + "/download");
 
         // Changer le statut
         asset.setStatus(AssetStatus.ACTIVE);

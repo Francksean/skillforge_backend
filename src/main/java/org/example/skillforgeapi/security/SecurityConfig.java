@@ -56,12 +56,11 @@ public class SecurityConfig {
     public AuthenticationManager authenticationManager() {
         return new ProviderManager(authenticationProvider());
     }
-    
+
     @Bean
     public DaoAuthenticationProvider authenticationProvider() {
-        DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
-        provider.setUserDetailsService(userDetailsService);
-        provider.setPasswordEncoder(passwordEncoder());
+        DaoAuthenticationProvider provider = new DaoAuthenticationProvider(userDetailsService);
+        provider.setPasswordEncoder(passwordEncoder());  // ← Cette ligne était absente
         return provider;
     }
 
