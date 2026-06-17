@@ -8,10 +8,11 @@ import java.util.Map;
 public class SftpGoWebhookPayload {
     private String event;
     private String username;
-    private String action;
     private String path;
+    private String fsPath;
     private Long size;
-    private Long fileModified;
+    private String protocol;
+    private String sessionId;
+    private Long timestamp;
     private Map<String, String> checksum;
-    private String provider;
 }
