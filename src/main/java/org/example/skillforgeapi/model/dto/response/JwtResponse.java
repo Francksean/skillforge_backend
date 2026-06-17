@@ -17,4 +17,13 @@ public class JwtResponse {
     private String email;
     private String role;
     private boolean enabled;
+
+    public JwtResponse(String token, UUID userId, String username, String email, String role, boolean enabled) {
+        this.token = token;
+        this.userId = userId;
+        this.username = username;
+        this.email = email;
+        this.role = role;
+        this.enabled = enabled;
+    }
 }

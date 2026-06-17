@@ -14,7 +14,7 @@ import java.util.UUID;
 @Data
 public class Module {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     private String title;

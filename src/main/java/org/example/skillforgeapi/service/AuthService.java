@@ -4,6 +4,7 @@ import org.example.skillforgeapi.exception.DuplicateResourceException;
 import org.example.skillforgeapi.model.dto.request.LoginRequest;
 import org.example.skillforgeapi.model.dto.request.RegisterRequest;
 import org.example.skillforgeapi.model.dto.response.JwtResponse;
+import org.example.skillforgeapi.util.Role;
 import org.example.skillforgeapi.model.entity.User;
 import org.example.skillforgeapi.repository.UserRepository;
 import org.example.skillforgeapi.security.JwtTokenProvider;
@@ -85,7 +86,6 @@ public class AuthService {
         user.setUsername(request.getUsername());
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         user.setEmail(request.getEmail());
-        user.setSite(request.getSite());
         user.setRole(role);
         user.setEnabled(true); // Compte activé par défaut
 
