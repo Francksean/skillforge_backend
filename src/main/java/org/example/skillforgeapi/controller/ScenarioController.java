@@ -1,5 +1,7 @@
 package org.example.skillforgeapi.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.example.skillforgeapi.model.dto.request.ScenarioRequest;
 import org.example.skillforgeapi.model.dto.request.ScenarioReorderRequest;
@@ -16,6 +18,7 @@ import java.util.UUID;
 
 @RestController
 @RequiredArgsConstructor
+@Tag(name = "Scénarios", description = "Gestion des scénarios rattachés aux modules")
 public class ScenarioController {
 
     private final ScenarioService scenarioService;
@@ -29,6 +32,7 @@ public class ScenarioController {
      */
     @GetMapping("/modules/{moduleId}/scenarios")
     @PreAuthorize("hasAnyRole('TRAINEE', 'TRAINER', 'ADMIN')")
+    @Operation(summary = "Lister les scénarios d'un module", description = "Liste tous les scénarios d'un module (triés). Accès : TRAINEE, TRAINER, ADMIN.")
     public ResponseEntity<List<ScenarioResponse>> getScenariosByModule(@PathVariable UUID moduleId) {
         List<ScenarioResponse> scenarios = scenarioService.getScenariosByModule(moduleId);
         return ResponseEntity.ok(scenarios);
@@ -41,6 +45,7 @@ public class ScenarioController {
      */
     @GetMapping("/modules/{moduleId}/scenarios/active")
     @PreAuthorize("hasAnyRole('TRAINEE', 'TRAINER', 'ADMIN')")
+    @Operation(summary = "Lister les scénarios actifs d'un module", description = "Liste uniquement les scénarios actifs (pour les stagiaires). Accès : TRAINEE, TRAINER, ADMIN.")
     public ResponseEntity<List<ScenarioResponse>> getActiveScenariosByModule(@PathVariable UUID moduleId) {
         List<ScenarioResponse> scenarios = scenarioService.getActiveScenariosByModule(moduleId);
         return ResponseEntity.ok(scenarios);
@@ -53,6 +58,7 @@ public class ScenarioController {
      */
     @PostMapping("/modules/{moduleId}/scenarios")
     @PreAuthorize("hasAnyRole('ADMIN', 'TRAINER')")
+    @Operation(summary = "Créer un scénario", description = "Crée un nouveau scénario dans le module. Accès : ADMIN, TRAINER.")
     public ResponseEntity<ScenarioResponse> createScenario(
             @PathVariable UUID moduleId,
             @Valid @RequestBody ScenarioRequest request) {
@@ -67,6 +73,7 @@ public class ScenarioController {
      */
     @PatchMapping("/modules/{moduleId}/scenarios/reorder")
     @PreAuthorize("hasAnyRole('ADMIN', 'TRAINER')")
+    @Operation(summary = "Réordonner les scénarios", description = "Réorganise l'ordre des scénarios d'un module. Accès : ADMIN, TRAINER.")
     public ResponseEntity<Void> reorderScenarios(
             @PathVariable UUID moduleId,
             @Valid @RequestBody ScenarioReorderRequest request) {
@@ -83,6 +90,7 @@ public class ScenarioController {
      */
     @GetMapping("/scenarios/{id}")
     @PreAuthorize("hasAnyRole('TRAINEE', 'TRAINER', 'ADMIN')")
+    @Operation(summary = "Détails d'un scénario", description = "Retourne un scénario avec ses assets. Accès : TRAINEE, TRAINER, ADMIN.")
     public ResponseEntity<ScenarioResponse> getScenarioById(@PathVariable UUID id) {
         ScenarioResponse scenario = scenarioService.getScenarioById(id);
         return ResponseEntity.ok(scenario);
@@ -95,6 +103,7 @@ public class ScenarioController {
      */
     @PutMapping("/scenarios/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'TRAINER')")
+    @Operation(summary = "Mettre à jour un scénario", description = "Met à jour un scénario. Accès : ADMIN, TRAINER.")
     public ResponseEntity<ScenarioResponse> updateScenario(
             @PathVariable UUID id,
             @Valid @RequestBody ScenarioRequest request) {
@@ -109,6 +118,7 @@ public class ScenarioController {
      */
     @DeleteMapping("/scenarios/{id}")
     @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Supprimer un scénario", description = "Supprime un scénario. Accès : ADMIN.")
     public ResponseEntity<Void> deleteScenario(@PathVariable UUID id) {
         scenarioService.deleteScenario(id);
         return ResponseEntity.noContent().build();
@@ -121,6 +131,7 @@ public class ScenarioController {
      */
     @PatchMapping("/scenarios/{id}/toggle")
     @PreAuthorize("hasAnyRole('ADMIN', 'TRAINER')")
+    @Operation(summary = "Activer / désactiver un scénario", description = "Bascule l'état actif d'un scénario. Accès : ADMIN, TRAINER.")
     public ResponseEntity<ScenarioResponse> toggleScenarioActive(@PathVariable UUID id) {
         ScenarioResponse updated = scenarioService.toggleScenarioActive(id);
         return ResponseEntity.ok(updated);

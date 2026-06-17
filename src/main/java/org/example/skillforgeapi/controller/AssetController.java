@@ -1,5 +1,7 @@
 package org.example.skillforgeapi.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +20,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/assets")
 @RequiredArgsConstructor
+@Tag(name = "Assets", description = "Upload (via SFTP) et téléchargement des ressources pédagogiques")
 public class AssetController {
 
     private final AssetService assetService;
@@ -28,6 +31,7 @@ public class AssetController {
      */
     @PostMapping("/init")
     @PreAuthorize("hasAnyRole('ADMIN', 'TRAINER')")
+    @Operation(summary = "Initialiser un upload d'asset", description = "Étape 1 : crée l'asset et retourne les informations d'upload SFTP. Accès : ADMIN, TRAINER.")
     public ResponseEntity<AssetInitResponse> initAsset(@Valid @RequestBody AssetInitRequest request) {
         AssetInitResponse response = assetService.initializeAsset(request);
         return ResponseEntity.status(201).body(response);
@@ -38,6 +42,7 @@ public class AssetController {
      */
     @GetMapping("/{id}/status")
     @PreAuthorize("hasAnyRole('ADMIN', 'TRAINER')")
+    @Operation(summary = "Statut d'un asset", description = "Retourne le statut d'un asset (utile pour le polling après upload). Accès : ADMIN, TRAINER.")
     public ResponseEntity<AssetStatus> getStatus(@PathVariable UUID id) {
         AssetStatus status = assetService.getAssetStatus(id);
         return ResponseEntity.ok(status);
@@ -51,6 +56,7 @@ public class AssetController {
      */
     @GetMapping("/{id}/download")
     @PreAuthorize("hasAnyRole('TRAINEE', 'ADMIN', 'TRAINER')")
+    @Operation(summary = "Télécharger un asset", description = "Stream le fichier de l'asset (uniquement si ACTIVE). Accès : TRAINEE, ADMIN, TRAINER.")
     public void downloadAsset(@PathVariable UUID id, HttpServletResponse response) throws IOException {
         try {
             var asset = assetService.getAsset(id);

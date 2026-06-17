@@ -1,5 +1,7 @@
 package org.example.skillforgeapi.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.example.skillforgeapi.model.dto.request.ModuleReorderRequest;
@@ -17,6 +19,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/modules")
 @RequiredArgsConstructor
+@Tag(name = "Modules", description = "Gestion des modules de formation")
 public class ModuleController {
 
     private final ModuleService moduleService;
@@ -28,6 +31,7 @@ public class ModuleController {
      */
     @GetMapping
     @PreAuthorize("hasAnyRole('TRAINEE', 'TRAINER', 'ADMIN')")
+    @Operation(summary = "Lister les modules", description = "Liste tous les modules triés par ordre. Accès : TRAINEE, TRAINER, ADMIN.")
     public ResponseEntity<List<ModuleResponse>> getAllModules() {
         List<ModuleResponse> modules = moduleService.getAllModules();
         return ResponseEntity.ok(modules);
@@ -40,6 +44,7 @@ public class ModuleController {
      */
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('TRAINEE', 'TRAINER', 'ADMIN')")
+    @Operation(summary = "Détails d'un module", description = "Retourne un module et ses niveaux. Accès : TRAINEE, TRAINER, ADMIN.")
     public ResponseEntity<ModuleResponse> getModuleById(@PathVariable UUID id) {
         ModuleResponse module = moduleService.getModuleById(id);
         return ResponseEntity.ok(module);
@@ -52,6 +57,7 @@ public class ModuleController {
      */
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'TRAINER')")
+    @Operation(summary = "Créer un module", description = "Crée un nouveau module. Accès : ADMIN, TRAINER.")
     public ResponseEntity<ModuleResponse> createModule(@Valid @RequestBody ModuleRequest request) {
         ModuleResponse created = moduleService.createModule(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
@@ -64,6 +70,7 @@ public class ModuleController {
      */
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'TRAINER')")
+    @Operation(summary = "Mettre à jour un module", description = "Met à jour un module existant. Accès : ADMIN, TRAINER.")
     public ResponseEntity<ModuleResponse> updateModule(
             @PathVariable UUID id,
             @Valid @RequestBody ModuleRequest request) {
@@ -78,6 +85,7 @@ public class ModuleController {
      */
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Supprimer un module", description = "Supprime un module et ses niveaux (cascade). Accès : ADMIN.")
     public ResponseEntity<Void> deleteModule(@PathVariable UUID id) {
         moduleService.deleteModule(id);
         return ResponseEntity.noContent().build();
@@ -90,6 +98,7 @@ public class ModuleController {
      */
     @PatchMapping("/reorder")
     @PreAuthorize("hasAnyRole('ADMIN', 'TRAINER')")
+    @Operation(summary = "Réordonner les modules", description = "Réorganise l'ordre d'affichage des modules. Accès : ADMIN, TRAINER.")
     public ResponseEntity<Void> reorderModules(@Valid @RequestBody ModuleReorderRequest request) {
         moduleService.reorderModules(request);
         return ResponseEntity.ok().build();
