@@ -17,4 +17,8 @@ public class AssetInitRequest {
 
     // Optionnel : pré-associer à des niveaux
     private List<UUID> scenariosId;
+
+    // Payload Unity : identifiant de l'équipement et étapes configurées
+    private String equipmentId;
+    private List<AssetStep> steps;
 }

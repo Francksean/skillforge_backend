@@ -1,9 +1,12 @@
 package org.example.skillforgeapi.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.skillforgeapi.model.dto.request.AssetInitRequest;
+import org.example.skillforgeapi.model.dto.request.AssetStep;
 import org.example.skillforgeapi.model.dto.request.SftpGoWebhookPayload;
 import org.example.skillforgeapi.model.dto.response.AssetInitResponse;
 import org.example.skillforgeapi.model.entity.Asset;
@@ -18,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
@@ -29,6 +33,7 @@ public class AssetService {
 
     private final AssetRepository assetRepository;
     private final ScenarioRepository scenarioRepository;
+    private final ObjectMapper objectMapper;
 
     @Value("${app.sftp.base-url}")
     private String sftpBaseUrl; // ex: sftp://sftpgo:2022
@@ -72,8 +77,23 @@ public class AssetService {
         Asset asset = new Asset();
         asset.setName(request.getName());
         asset.setType(request.getType());
-        asset.setSftpPath(virtualPath); // stocke le chemin virtuel (sans nom de fichier)
+        asset.setSftpPath(virtualPath);
         asset.setStatus(AssetStatus.PENDING);
+
+        // Payload Unity
+        if (request.getEquipmentId() != null) {
+            asset.setEquipmentId(request.getEquipmentId());
+        }
+        List<AssetStep> steps = Collections.emptyList();
+        if (request.getSteps() != null && !request.getSteps().isEmpty()) {
+            try {
+                asset.setStepsJson(objectMapper.writeValueAsString(request.getSteps()));
+                steps = request.getSteps();
+            } catch (Exception e) {
+                throw new RuntimeException("Erreur lors de la sérialisation des étapes Unity", e);
+            }
+        }
+
         asset = assetRepository.save(asset);
 
         // Pré-associer aux scénarios si demandé
@@ -83,16 +103,15 @@ public class AssetService {
             asset = assetRepository.save(asset);
         }
 
-        // Construire la réponse : le chemin virtuel relatif (pour que le client FTP s'y place)
-        // On envoie le chemin sans le premier '/' pour certains clients, mais on peut l'envoyer avec.
-        // Nous envoyons le chemin complet virtuel (commençant par /) pour être explicite.
         String fullSftpUrl = sftpBaseUrl + virtualPath;
 
         return new AssetInitResponse(
                 asset.getId(),
                 token,
-                virtualPath,      // chemin relatif virtuel (ex: /MODEL/a1b2c3/)
-                fullSftpUrl       // URL complète sftp://... (optionnel)
+                virtualPath,
+                fullSftpUrl,
+                asset.getEquipmentId(),
+                steps
         );
     }
 
@@ -103,7 +122,7 @@ public class AssetService {
     @Transactional
     public void finalizeAssetFromSftpUpload(SftpGoWebhookPayload payload) {
         // Extraire le token du chemin complet
-        String path = payload.getPath(); // ex: /uploads/a1b2c3/model.gltf
+        String path = payload.getFsPath(); // ex: /uploads/a1b2c3/model.gltf
         String[] parts = path.split("/");
         if (parts.length < 3) {
             log.error("Chemin invalide dans le webhook: {}", path);
@@ -117,11 +136,9 @@ public class AssetService {
 
         // Mettre à jour les métadonnées
         asset.setFileSize(payload.getSize());
-        if (payload.getChecksum() != null && payload.getChecksum().containsKey("sha256")) {
-            asset.setChecksumSha256(payload.getChecksum().get("sha256"));
-        }
+
         // Enregistrer le chemin complet (avec le nom du fichier)
-        asset.setSftpPath(payload.getPath());
+        asset.setSftpPath(payload.getFsPath());
 
         // URL publique (pour téléchargement HTTP)
         asset.setFileUrl(appBaseUrl + "/assets/" + asset.getId() + "/download");

@@ -18,7 +18,6 @@ public interface AssetRepository extends JpaRepository<Asset, UUID> {
     @Query("SELECT a FROM Asset a WHERE a.sftpPath LIKE %:token% AND a.status = :status")
     Optional<Asset> findBySftpPathContainingAndStatus(@Param("token") String token,
                                                       @Param("status") AssetStatus status);
-    Optional<Asset> findByChecksumSha256(String checksumSha256);
     List<Asset> findByType(AssetType type);
     List<Asset> findByNameContainingIgnoreCase(String name);
 }

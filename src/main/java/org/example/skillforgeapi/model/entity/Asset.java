@@ -33,12 +33,15 @@ public class Asset {
     @Column(name = "file_size")
     private Long fileSize;
 
-    @Column(name = "checksum_sha256")
-    private String checksumSha256;
-
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private AssetStatus status = AssetStatus.PENDING;
+
+    @Column(name = "equipment_id")
+    private String equipmentId;
+
+    @Column(name = "steps_json", columnDefinition = "TEXT")
+    private String stepsJson;
 
     @UpdateTimestamp
     @Column(name = "updated_at")
